@@ -1,0 +1,53 @@
+# Phrases that mark the user's message as a correction of the previous turn.
+phrases:
+  - undo
+  - revert
+  - roll back
+  - rollback
+  - that's wrong
+  - thats wrong
+  - that was wrong
+  - that's not right
+  - why did you
+  - you shouldn't have
+  - you should not have
+  - don't do that
+  - do not do that
+  - not what i asked
+  - wrong file
+  - wrong branch
+  - wrong directory
+  - wrong repo
+  - you deleted
+  - you broke
+  - you overwrote
+  - put it back
+  - change it back
+  - restore it
+
+# Phrases that count only at the very start of the message.
+leading: [stop]
+
+# Messages that open with one of these count only if short and followed by an action-ish verb.
+negations: ["no", "nope", "nah"]
+max_negation_chars: 120
+
+# Verbs that make a bare "no, ..." a correction rather than an answer.
+action_verbs:
+  - undo
+  - revert
+  - restore
+  - delete
+  - remove
+  - don't
+  - dont
+  - do not
+  - stop
+  - change
+  - fix
+  - put
+  - wrong
+  - back
+  - never
+  - shouldn't
+  - didn't ask

@@ -1,0 +1,93 @@
+# Autonoma default action-class rules.
+# Override or extend in <HERMES_HOME>/autonoma/taxonomy.yaml (user entries win).
+
+# Most severe first. Classes on the same line share a rank.
+severity:
+  - [system]
+  - [spend]
+  - [fs.delete]
+  - [git.remote, net.outbound, msg.send]
+  - [fs.write]
+  - [git.local]
+  - [shell.exec]
+  - [read]
+
+# 1. Exact tool names.
+tools:
+  read_file: read
+  search_files: read
+  web_search: read
+  web_extract: read
+  x_search: read
+  session_search: read
+  skill_view: read
+  skills_list: read
+  vision_analyze: read
+  video_analyze: read
+  read_terminal: read
+  read_window_below: read
+  close_terminal: read
+  clarify: read
+  todo_list: read
+  memory: read
+  show_tip: read
+  set_theme: read
+  focus_pane: read
+  gui_tour: read
+  setup_beat: read
+  annotate_preview: read
+  desktop_preview: read
+  drive_preview: read
+  feishu_doc_read: read
+  autonoma_status: read
+  tool_search: read
+  tool_describe: read
+  tool_call: read
+  write_file: fs.write
+  patch: fs.write
+  edit_file: fs.write
+  skill_manage: fs.write
+  image_generate: fs.write
+  video_generate: fs.write
+  text_to_speech: fs.write
+  execute_code: shell.exec
+  process_manage: shell.exec
+  delegate_task: shell.exec
+  desktop_project: shell.exec
+  browser_exec: net.outbound
+  browser_cdp: net.outbound
+  browser_dialog: read
+  react_to_message: msg.send
+  send_message: msg.send
+  cronjob_manage: system
+  computer_use: system
+  browser_vault: system
+  manage_connections: system
+  manage_catalog: system
+
+# 2. Tool-name regexes, first match wins.
+tool_patterns:
+  - ["^(send|post|reply|notify)|_(send|post|reply|notify)(_|$)|add_comment", msg.send]
+  - ["^(pay|wallet|x402)", spend]
+  - ["^(get|list|read|search|fetch|view|show|describe)_", read]
+  - ["^kanban_", read]
+
+# 3. Shell verbs (terminal tool). A few more (privilege and env-dump verbs) are built into taxonomy.py. Special-cased verbs (git, gh, curl, sed, find,
+#    docker, package managers, rsync/scp, xargs, shells) are handled in code.
+verbs:
+  read: [cat, ls, ll, la, head, tail, less, more, grep, rg, egrep, fgrep, ag, ack, pwd, echo,
+         printf, wc, sort, uniq, cut, tr, awk, which, whereis, whence, file, stat, du, df,
+         date, whoami, id, uname, tree, jq, yq, diff, cmp, md5, md5sum, shasum, sha256sum, "true",
+         "false", test, "[", cd, pushd, popd, history, ps, top, htop, lsof, basename, dirname,
+         realpath, readlink, type, man, help, hostname, uptime, column, nl, od, xxd, hexdump,
+         strings, fd, bat, exa, eza, sleep, wait, seq, yes, ping, dig, nslookup, host, tput, clear]
+  fs.write: [tee, cp, mv, mkdir, touch, ln, install, unzip, tar, zip, gzip, gunzip, patch, dd,
+             mktemp, ditto]
+  fs.delete: [rm, rmdir, shred, truncate, unlink, srm, trash]
+  system: [su, doas, systemctl, service, launchctl, chmod, chown, chgrp, kill, pkill, killall,
+           crontab, shutdown, reboot, halt, mount, umount, diskutil, fdisk, iptables, ufw,
+           useradd, userdel, usermod, passwd, defaults, csrutil, spctl, nvram, pmset]
+  net.outbound: [ssh, sftp, ftp, telnet, nc, netcat, ncat, mosh]
+
+# Paths where any write or delete is escalated to `system`.
+system_paths: [/etc, /usr, /bin, /sbin, /System, /boot, /Library, /var/root]

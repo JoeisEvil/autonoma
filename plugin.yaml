@@ -1,0 +1,37 @@
+name: autonoma
+version: "0.1.0"
+description: Earned autonomy for Hermes — trust per action class that rises with clean work and falls with corrections, gating unearned actions through Hermes's own approval prompt; plus deterministic handoff notes so an unfinished session resumes without re-prompting.
+author: Joseph Downes-Berry
+license: MIT
+homepage: https://github.com/JoeisEvil/autonoma
+manifest_version: 2
+api_version: 1
+requires_hermes: ">=0.23.0"
+tags: [trust, approvals, safety, autonomy, handoff, local-models]
+provides_tools:
+  - autonoma_status
+provides_hooks:
+  - pre_tool_call
+  - post_tool_call
+  - pre_llm_call
+  - post_llm_call
+  - on_session_start
+  - on_session_end
+  - on_session_reset
+  - post_compaction
+  - post_approval_response
+config_schema:
+  enabled: {type: bool, default: true, label: "Enable trust gate", description: "Ask before actions whose class is below its trust threshold"}
+  start_score: {type: int, default: 10, label: "Starting trust", description: "Score a class starts at the first time it is seen (0-100)"}
+  thresholds: {type: dict, default: {fs.write: 60, fs.delete: 80, shell.exec: 60, git.local: 50, git.remote: 70, net.outbound: 70, msg.send: 70, spend: 80, system: 80}, description: "Per-class autonomy thresholds (0-100)"}
+  gain_rate: {type: float, default: 0.04, label: "Gain rate", description: "Share of remaining headroom gained per clean call"}
+  decay_days: {type: int, default: 14, label: "Decay after (days)", description: "Unused classes lose 1 point a day toward 30 after this many days"}
+  hard_floor_enabled: {type: bool, default: false, label: "Block (not ask) after a bad correction"}
+  hard_floor_score: {type: int, default: 20, label: "Hard floor score", description: "A correction that drops a class below this puts it in timeout"}
+  hard_floor_turns: {type: int, default: 10, label: "Timeout length (turns)"}
+  corrections_llm: {type: bool, default: false, label: "Use the model to confirm corrections", description: "Sends the previous assistant message and your reply to the active model"}
+  handoff_enabled: {type: bool, default: true, label: "Handoff notes", description: "Tell the next session what an unfinished one already did"}
+  handoff_max_age_hours: {type: int, default: 72, label: "Handoff max age (hours)"}
+  handoff_max_chars: {type: int, default: 3000, label: "Handoff note size (chars)"}
+  handoff_after_compaction: {type: bool, default: true, label: "Progress list after compaction"}
+  retention_days: {type: int, default: 90, label: "Ledger retention (days)"}
