@@ -309,6 +309,7 @@ class Runtime:
         if cls.startswith(TAINT_PREFIX):
             self.gates.set_approval(cls.rsplit(":", 1)[-1], f"taint:{choice}")
             return None
+        cls = cls.split(":", 1)[0]
         self.gates.set_approval(cls, choice)
         with self._lock:
             self.engine().apply(self.profile, cls, reason)

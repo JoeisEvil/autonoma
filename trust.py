@@ -36,6 +36,7 @@ REASONS = {"clean_call", "clean_turn", "approved_once", "approved_session", "app
 USE_REASONS = {"clean_call", "tool_error", "approved_once", "approved_session", "approved_always",
                "denied", "corrected"}
 OPERATOR_REASONS = {"operator_set", "reset"}
+REVOKING_REASONS = ("corrected", "reset")
 DAY = 86400.0
 
 
@@ -126,7 +127,13 @@ class TrustEngine:
         what = f" — {summary}" if summary else ""
         msg = (f"Autonoma · {cls} trust {score:.0f}/{threshold:.0f}{what}. "
                f"~{n} clean {VERBS.get(cls, 'calls')} to autonomy.")
-        return GateDecision("approve", cls, score, threshold, msg, f"autonoma:{cls}")
+        return GateDecision("approve", cls, score, threshold, msg, self.rule_key(profile, cls))
+
+    def rule_key(self, profile, cls):
+        epoch = self.db.execute(
+            "SELECT COUNT(*) FROM trust_events WHERE profile=? AND action_class=? AND reason IN (?, ?)",
+            (profile, cls, *REVOKING_REASONS)).fetchone()[0]
+        return f"autonoma:{cls}" if not epoch else f"autonoma:{cls}:v{epoch}"
 
     def delta_for(self, reason, score, threshold, value=None) -> float:
         c = self.config

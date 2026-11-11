@@ -72,7 +72,7 @@ part wins, so `git add . && git commit && git push` is `git.remote`.
 | You approve (once / session) | +8 |
 | You approve **always** | jumps to the threshold |
 | You deny | −25 |
-| You correct it ("no, revert that", "wrong file", "undo") | −30 for every class used in that turn |
+| You correct it ("no, revert that", "wrong file", "undo") | −30 for every class used in that turn, and earlier "session"/"always" approvals for those classes stop counting |
 | The tool fails | −4 |
 | Prompt times out, or no one is there to answer | no change, action blocked |
 | Unused for 14 days | −1 per day, down to 30 |

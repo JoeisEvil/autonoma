@@ -233,3 +233,22 @@ def test_taint_disabled(rt):
     _tool(rt, "s1", "web_search", {"query": "q"}, "c1")
     assert rt.on_pre_tool_call(tool_name="terminal", args={"command": "git push"}, task_id="s1",
                                session_id="s1", tool_call_id="c2") is None
+
+
+def test_correction_revokes_standing_grants(rt):
+    _turn(rt, "s1", "x", first=True)
+    d = rt.on_pre_tool_call(tool_name="write_file", args={"path": "a"}, task_id="s1", tool_call_id="c1")
+    assert d["rule_key"] == "autonoma:fs.write"
+    rt.on_post_approval_response(pattern_key="plugin_rule:autonoma:fs.write", choice="always")
+    assert rt.engine().score("test", "fs.write") == 60
+    _tool(rt, "s1", "write_file", {"path": "a"}, "c1")
+    rt.on_post_llm_call(session_id="s1", assistant_response="done")
+    _turn(rt, "s1", "no, wrong file, undo that")
+    d = rt.on_pre_tool_call(tool_name="write_file", args={"path": "b"}, task_id="s1", tool_call_id="c2")
+    assert d["action"] == "approve" and d["rule_key"] == "autonoma:fs.write:v1"
+    before = rt.engine().score("test", "fs.write")
+    rt.on_post_approval_response(pattern_key="plugin_rule:autonoma:fs.write:v1", choice="once")
+    assert rt.engine().score("test", "fs.write") == before + 8
+    rt.engine().reset("test", "fs.write")
+    assert rt.on_pre_tool_call(tool_name="write_file", args={"path": "c"}, task_id="s1",
+                               tool_call_id="c3")["rule_key"] == "autonoma:fs.write:v2"
