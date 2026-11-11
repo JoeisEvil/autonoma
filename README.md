@@ -83,6 +83,8 @@ The approval prompt shows the score and what it will take:
 Autonoma · fs.write trust 23/60 — api/limiter.py. ~17 clean writes to autonomy.
 ```
 
+![Approval prompt raised by Autonoma](docs/approval-prompt.jpg)
+
 **After outside content.** Once a turn has read a web page, search results, browser output, an MCP
 tool, a mail/inbox tool or `curl`/`wget` output, deletes, pushes, messages, network calls, spending
 and system actions ask again for the rest of that turn, even when trusted. It resets on your next
@@ -112,6 +114,8 @@ Not done: last stated plan was "Tests pass. Next I'll update the README with the
 the branch." — no git.remote actions were recorded after it.
 If the user wants to continue, resume from here rather than redoing completed steps. Otherwise ignore this note.
 ```
+
+![A fresh session picking up from the handoff note](docs/handoff.jpg)
 
 It comes from the tool log, not the model's own summary, so it holds up even when the model was
 the thing that failed. The bundled skill tells the model to confirm with you before continuing.
