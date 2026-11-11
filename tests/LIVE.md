@@ -1,4 +1,4 @@
-# Live checks (SPEC §11)
+# Live checks
 
 Run in the dev profile: `cd /tmp/autonoma-demo && hermes -p autonomadev`.
 After editing plugin code: `hermes -p autonomadev plugins disable autonoma && hermes -p autonomadev plugins enable autonoma`.

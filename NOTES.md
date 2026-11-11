@@ -1,4 +1,4 @@
-# NOTES — differences between SPEC.md and live Hermes
+# NOTES — differences between the build spec and live Hermes
 
 Hermes tested: v0.23.0+2508.g58b3c09 (main @ 58b3c09b11, 2026-11-09). Dev profile: `autonomadev`
 (cloned config, plugin enabled only there).
