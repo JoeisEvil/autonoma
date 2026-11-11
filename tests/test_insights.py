@@ -89,3 +89,13 @@ def test_flags_column_migrates_old_db():
     assert "flags" not in {r[1] for r in conn.execute("PRAGMA table_info(events)")}
     pl.init(conn)
     assert "flags" in {r[1] for r in conn.execute("PRAGMA table_info(events)")}
+
+
+def test_workaround_needs_same_turn():
+    db = _db()
+    _ev(db, "terminal", "fs.delete", "rm a", T0, ok=False, error="blocked", gated=True, approval="deny")
+    _ev(db, "patch", "fs.write", "b.py", T0 + 60)
+    evs = insights._events(db, P, 0)
+    assert any(i["kind"] == "workaround" for i in insights.incidents(evs))
+    assert not any(i["kind"] in ("workaround", "retry")
+                   for i in insights.incidents(evs, turn_starts={"s1": [T0 + 30]}))

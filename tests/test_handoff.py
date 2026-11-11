@@ -46,7 +46,8 @@ def test_crashed_session_without_end_hook_is_found(db, clock):
     _session(db, "s1", clock)
     _event(db, "s1", "write_file", "fs.write", "a", ts=clock())
     assert handoff.find_open(db, P, None, now=clock() + 30)[0] is None
-    s, _ = handoff.find_open(db, P, None, now=clock() + 300)
+    assert handoff.find_open(db, P, None, now=clock() + 300)[0] is None
+    s, _ = handoff.find_open(db, P, None, now=clock() + 700)
     assert s["session_id"] == "s1"
 
 

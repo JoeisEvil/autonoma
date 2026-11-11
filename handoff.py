@@ -4,7 +4,7 @@ import time
 from datetime import datetime
 
 MAX_LINES = 25
-STALE_SECONDS = 120
+STALE_SECONDS = 600
 TASK_CHARS = 500
 PLAN_CHARS = 500
 
@@ -98,7 +98,9 @@ def close_session(db, session_id, completed, interrupted, ts=None):
 
 def _last_activity(db, session):
     r = db.execute("SELECT MAX(ts) FROM events WHERE session_id=?", (session["session_id"],)).fetchone()
-    return max(filter(None, [r[0] if r else None, session["started_ts"], session["ended_ts"]]))
+    t = db.execute("SELECT MAX(ts) FROM turns WHERE session_id=?", (session["session_id"],)).fetchone()
+    return max(filter(None, [r[0] if r else None, t[0] if t else None, session["started_ts"],
+                             session["ended_ts"]]))
 
 
 def candidates(db, profile, *, now=None, max_age_hours=72, exclude=()):

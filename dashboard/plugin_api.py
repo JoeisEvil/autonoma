@@ -34,13 +34,21 @@ def _settings():
         return {}
 
 
+def _profile_name():
+    try:
+        from hermes_constants import get_hermes_home
+        home = Path(get_hermes_home())
+        return home.name if home.parent.name == "profiles" else "default"
+    except Exception:
+        return "default"
+
+
 def _open():
     from plugins.plugin_storage import plugin_data_dir
     m = _pkg()
     db = sqlite3.connect(plugin_data_dir(PLUGIN) / "data.db", timeout=5)
     m["ledger"].init(db)
-    r = db.execute("SELECT profile FROM trust GROUP BY profile ORDER BY MAX(updated_ts) DESC LIMIT 1").fetchone()
-    profile = r[0] if r else "default"
+    profile = _profile_name()
     cfg = _settings()
     engine = m["trust"].TrustEngine(db, {k: cfg.get(k) for k in (
         "enabled", "start_score", "thresholds", "gain_rate", "decay_days", "hard_floor_enabled",

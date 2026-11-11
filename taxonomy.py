@@ -400,11 +400,21 @@ def _inline_code(rest):
     return None
 
 
+_KEYWORD_HEADERS = {"for", "select", "case", "function"}
+_KEYWORD_SKIP = {"do", "done", "then", "else", "elif", "fi", "esac", "while", "until", "if", "!", "{", "}",
+                 "time"}
+
+
 def _strip_prefixes(tokens):
     elevated = False
     i = 0
     while i < len(tokens):
         t = tokens[i]
+        if t in _KEYWORD_HEADERS:
+            return None, [], elevated
+        if t in _KEYWORD_SKIP:
+            i += 1
+            continue
         if _ASSIGN.match(t):
             i += 1
             continue

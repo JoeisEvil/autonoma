@@ -78,6 +78,10 @@ COMMANDS = [
     ("cd repo; git status", "read"),
     ("cd repo\ngit push", "git.remote"),
     ("unknowncmd --flag", "shell.exec"),
+    ("for f in a b; do cat $f; done", "read"),
+    ("for f in *.log; do rm $f; done", "fs.delete"),
+    ("if [ -f x ]; then echo hi > y; fi", "fs.write"),
+    ("while true; do sleep 1; done", "read"),
     ("echo 'unterminated", "shell.exec"),
     ("", "shell.exec"),
 ]

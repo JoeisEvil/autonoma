@@ -46,7 +46,7 @@ re-injection; subagent tool calls.
 - **Debug switch** (not in spec): if `<plugin-data>/autonoma/debug_kwargs` exists, each hook appends
   its kwarg names/types and id fields (no values) to `kwargs.log`. Needed for the Phase 0 capture.
 - **Crash detection** (not in spec): a session with no `on_session_end` after its last turn and
-  ≥ 120 s idle is treated as unfinished, because `kill -9` fires no hook.
+  ≥ 10 min idle (counting turns, not just tool calls) is treated as unfinished, because `kill -9` fires no hook.
 - **Tainted turns** (not in spec): once a turn runs an untrusted source (`untrusted_sources` in
   `data/taxonomy.yaml`: web/browser/search tools, `mcp_*`, mail/inbox readers, `curl`/`wget`), the
   `taint_classes` (system, spend, fs.delete, git.remote, net.outbound, msg.send) ask for approval
@@ -62,3 +62,8 @@ re-injection; subagent tool calls.
   a different action within 5 min after a block (workaround), the same action after a "deny" (retry),
   taint-gated actions (`events.flags`, added by migration), `skill_manage` calls, corrections, and
   threshold crossings. Polls every 2.5 s while the page is visible.
+- **Found while recording the demo**: a long model turn (>2 min thinking, no tool calls) was flagged as a
+  crashed session; turns now count as activity and the idle window is 10 min. A new request soon after
+  a block was flagged as a workaround; workarounds now need to be in the same turn. Shell `for`/`if`/
+  `while` wrappers are classified by the commands inside them. The dashboard names the profile from its
+  folder, not from ledger rows.

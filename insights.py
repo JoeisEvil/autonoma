@@ -58,8 +58,13 @@ def _incident(kind, e, title, detail, **extra):
             "outcome": e.get("outcome"), "action_class": e.get("action_class"), **extra}
 
 
-def incidents(events, turns=(), crossings=()):
+def incidents(events, turns=(), crossings=(), turn_starts=None):
     out = []
+    starts = turn_starts or {}
+
+    def new_turn_between(sid, a, b):
+        return any(a < t <= b for t in starts.get(sid, ()))
+
     by_session = {}
     for e in events:
         by_session.setdefault(e["session_id"], []).append(e)
@@ -68,7 +73,7 @@ def incidents(events, turns=(), crossings=()):
             if e["outcome"] != "stopped":
                 continue
             for n in evs[i + 1:]:
-                if n["ts"] - e["ts"] > WORKAROUND_WINDOW_S:
+                if n["ts"] - e["ts"] > WORKAROUND_WINDOW_S or new_turn_between(e["session_id"], e["ts"], n["ts"]):
                     break
                 if n["outcome"] == "read":
                     continue
@@ -151,6 +156,9 @@ def build_state(db, engine, profile, current_turn=0, *, now=None, window_s=86400
     events = _events(db, profile, since)
     turns = db.execute("SELECT ts, user_excerpt FROM turns WHERE profile=? AND corrected=1 AND ts>=?",
                        (profile, since)).fetchall()
+    starts = {}
+    for sid, ts in db.execute("SELECT session_id, ts FROM turns WHERE profile=? AND ts>=?", (profile, since)):
+        starts.setdefault(sid, []).append(ts)
     return {
         "generated_ts": now,
         "profile": profile,
@@ -161,6 +169,6 @@ def build_state(db, engine, profile, current_turn=0, *, now=None, window_s=86400
         "classes": rows,
         "stats": stats(events),
         "events": list(reversed(events[-EVENT_LIMIT:])),
-        "incidents": incidents(events, turns, crossings(db, engine, profile, since)),
+        "incidents": incidents(events, turns, crossings(db, engine, profile, since), starts),
         "handoff": handoff_summary(db, profile),
     }
