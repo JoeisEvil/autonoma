@@ -1,0 +1,14 @@
+{
+  "name": "autonoma",
+  "label": "Autonoma",
+  "description": "Earned-autonomy trust scores, the action ledger and incidents",
+  "icon": "Shield",
+  "version": "0.1.0",
+  "tab": {
+    "path": "/autonoma",
+    "position": "after:sessions"
+  },
+  "entry": "dist/index.js",
+  "css": "dist/style.css",
+  "api": "plugin_api.py"
+}

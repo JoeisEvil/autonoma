@@ -14,6 +14,17 @@ _WRITE_REDIRECTS = {">", ">>", ">|", "&>", "&>>"}
 _PREFIXES = {"env", "nohup", "time", "nice", "exec", "command", "builtin", "stdbuf", "caffeinate"}
 _PREFIXES_WITH_ARG = {"timeout", "gtimeout"}
 _SHELLS = {"bash", "sh", "zsh", "dash", "fish"}
+_INTERPRETER = re.compile(r"^(python[\d.]*|pypy[\d.]*|node|nodejs|deno|ruby|perl|php|osascript)$")
+_INLINE_FLAGS = {"-c", "-e", "-E", "--eval", "-r", "-p", "--print"}
+_INLINE_CODE = [
+    ("fs.delete", re.compile(r"os\.(remove|unlink|rmdir|removedirs)|rmtree|\.unlink\(|unlinkSync|rmSync|rmdirSync"
+                             r"|fs\.(promises\.)?(rm|unlink)|FileUtils\.rm|File\.delete|\bunlink\b|\brm\s+-")),
+    ("net.outbound", re.compile(r"requests\.(post|put|patch|delete)|smtplib|method\s*[:=]\s*['\"](POST|PUT|PATCH|DELETE)"
+                                r"|paramiko|ftplib|Net::HTTP::Post", re.I)),
+    ("fs.write", re.compile(r"open\([^)]*['\"][wax]b?\+?['\"]|write_text|write_bytes|writeFileSync|appendFileSync"
+                            r"|fs\.(promises\.)?(writeFile|appendFile)|shutil\.(copy|move)|os\.(rename|replace|mkdir|makedirs)"
+                            r"|File\.write|IO\.write")),
+]
 _ASSIGN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=")
 _REMOTE_PATH = re.compile(r"^(?:[\w.-]+@)?[\w.-]+:(?!//)")
 _URL = re.compile(r"^[a-z][a-z0-9+.-]*://", re.I)
@@ -89,6 +100,11 @@ class Taxonomy:
         for cls in list(self.tools.values()) + list(self.verbs.values()) + [c for _, c in self.patterns]:
             self.rank.setdefault(cls, self.rank.get("shell.exec", 1))
         self.classes = sorted(set(self.rank) - {READ}, key=lambda c: -self.rank[c])
+        src = rules.get("untrusted_sources") or {}
+        self.untrusted_tools = set(src.get("tools") or [])
+        self.untrusted_patterns = [re.compile(p, re.I) for p in src.get("patterns") or []]
+        self.untrusted_verbs = set(src.get("verbs") or [])
+        self.taint_classes = set(rules.get("taint_classes") or [])
 
     @classmethod
     def load(cls, override_path=None, default_path=DEFAULT_PATH):
@@ -105,12 +121,35 @@ class Taxonomy:
         args = args if isinstance(args, dict) else {}
         if tool_name == "terminal":
             return self.classify_command(args.get("command") or args.get("code") or "")
+        if tool_name == "execute_code":
+            return self.most_severe([self.tools.get(tool_name, "shell.exec"),
+                                     self.classify_code(str(args.get("code") or ""))])
         if tool_name in self.tools:
             return self._escalate_path(self.tools[tool_name], args)
         for rx, cls in self.patterns:
             if rx.search(tool_name):
                 return cls
         return "shell.exec"
+
+    def untrusted_source(self, tool_name: str, args=None):
+        args = args if isinstance(args, dict) else {}
+        if tool_name == "terminal":
+            try:
+                segments = split_segments(args.get("command") or "")
+            except ValueError:
+                return None
+            for seg in segments:
+                verb = _strip_prefixes(seg)[0]
+                if verb and os.path.basename(verb) in self.untrusted_verbs:
+                    return os.path.basename(verb)
+            return None
+        if tool_name in self.untrusted_tools or any(rx.search(tool_name) for rx in self.untrusted_patterns):
+            return tool_name
+        return None
+
+    def classify_code(self, code: str) -> str:
+        found = ["shell.exec"] + [cls for cls, rx in _INLINE_CODE if rx.search(code or "")]
+        return self.most_severe(found)
 
     def _escalate_path(self, cls, args):
         if cls in ("fs.write", "fs.delete"):
@@ -207,6 +246,9 @@ class Taxonomy:
         if base in _SHELLS and "-c" in rest:
             idx = rest.index("-c")
             return self.classify_command(rest[idx + 1]) if idx + 1 < len(rest) else "shell.exec"
+        if _INTERPRETER.match(base):
+            code = _inline_code(rest)
+            return self.classify_code(code) if code is not None else "shell.exec"
         if base in _PKG_MANAGERS:
             if base in ("npx", "bunx"):
                 return "net.outbound"
@@ -349,6 +391,15 @@ def split_segments(command: str):
     return [s for s in segments if s]
 
 
+def _inline_code(rest):
+    for i, a in enumerate(rest):
+        if a in _INLINE_FLAGS:
+            return rest[i + 1] if i + 1 < len(rest) else ""
+        if not a.startswith("-"):
+            return None
+    return None
+
+
 def _strip_prefixes(tokens):
     elevated = False
     i = 0
@@ -406,6 +457,9 @@ def summarize_command(command: str) -> str:
         base = os.path.basename(verb)
         if base in _SHELLS and "-c" in rest:
             parts.append(f"{base} -c …")
+            continue
+        if _INTERPRETER.match(base) and _inline_code(rest) is not None:
+            parts.append(f"{base} inline code")
             continue
         arg = _safe_arg(base, rest)
         words = [("sudo" if elevated else ""), base, arg, (f"> {_clip(target, 60)}" if target else "")]

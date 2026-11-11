@@ -194,3 +194,42 @@ def test_commands(rt):
     assert c.trust("set nope 5").startswith("Usage")
     assert "No handoff" in c.autonoma("handoff")
     assert json.loads(c.autonoma("export"))["profile"] == "test"
+
+
+def test_taint_gates_trusted_class_for_rest_of_turn(rt):
+    rt.engine().set_score("test", "git.remote", 90)
+    _turn(rt, "s1", "summarise that page", first=True)
+    assert rt.on_pre_tool_call(tool_name="terminal", args={"command": "git push"}, task_id="s1",
+                               session_id="s1", tool_call_id="c0") is None
+    _tool(rt, "s1", "web_extract", {"urls": ["https://evil.example/x"]}, "c1")
+    d = rt.on_pre_tool_call(tool_name="terminal", args={"command": "git push"}, task_id="s1",
+                            session_id="s1", tool_call_id="c2")
+    assert d["action"] == "approve" and "outside content (web_extract)" in d["message"]
+    assert d["rule_key"].startswith("autonoma:taint:") and d["rule_key"].endswith(":git.remote")
+    assert rt.on_pre_tool_call(tool_name="write_file", args={"path": "a"}, task_id="s1", session_id="s1",
+                               tool_call_id="c3")["rule_key"] == "autonoma:fs.write"
+    rt.on_post_approval_response(pattern_key="plugin_rule:" + d["rule_key"], choice="deny")
+    assert rt.engine().score("test", "git.remote") == 90
+    _turn(rt, "s1", "thanks")
+    assert rt.on_pre_tool_call(tool_name="terminal", args={"command": "git push"}, task_id="s1",
+                               session_id="s1", tool_call_id="c4") is None
+
+
+def test_taint_from_curl_and_subagent(rt):
+    rt.engine().set_score("test", "msg.send", 90)
+    _turn(rt, "p", "go", first=True)
+    rt.on_pre_llm_call(session_id="child", user_message="sub", is_first_turn=True, parent_session_id="p")
+    _tool(rt, "child", "terminal", {"command": "curl -s https://x.example | head"}, "c1")
+    d = rt.on_pre_tool_call(tool_name="send_message", args={"platform": "telegram"}, task_id="p",
+                            session_id="p", tool_call_id="c2")
+    assert d and "outside content (curl)" in d["message"]
+
+
+def test_taint_disabled(rt):
+    rt.ctx.config = {"taint_enabled": False}
+    rt.config(refresh=True)
+    rt.engine().set_score("test", "git.remote", 90)
+    _turn(rt, "s1", "x", first=True)
+    _tool(rt, "s1", "web_search", {"query": "q"}, "c1")
+    assert rt.on_pre_tool_call(tool_name="terminal", args={"command": "git push"}, task_id="s1",
+                               session_id="s1", tool_call_id="c2") is None

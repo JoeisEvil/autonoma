@@ -46,7 +46,7 @@ tools:
   write_file: fs.write
   patch: fs.write
   edit_file: fs.write
-  skill_manage: fs.write
+  skill_manage: system
   image_generate: fs.write
   video_generate: fs.write
   text_to_speech: fs.write
@@ -91,3 +91,12 @@ verbs:
 
 # Paths where any write or delete is escalated to `system`.
 system_paths: [/etc, /usr, /bin, /sbin, /System, /boot, /Library, /var/root]
+
+# Outside content. After any of these runs, the classes in `taint_classes` ask first for the rest
+# of that turn, even when trusted.
+untrusted_sources:
+  tools: [web_extract, web_search, x_search, browser_exec, browser_cdp, feishu_doc_read,
+          vision_analyze, video_analyze, session_search]
+  patterns: ["^mcp_", "^fetch_", "^(read|get|list|search|check|fetch)_.*(email|inbox|mail|messages|dm)"]
+  verbs: [curl, wget, http, https, lynx, w3m]
+taint_classes: [system, spend, fs.delete, git.remote, net.outbound, msg.send]

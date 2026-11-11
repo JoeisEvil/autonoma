@@ -105,6 +105,7 @@ def test_enough_cases():
     ("wallet_transfer", {}, "spend"),
     ("delegate_task", {"goal": "x"}, "shell.exec"),
     ("execute_code", {"code": "print(1)"}, "shell.exec"),
+    ("skill_manage", {"operations": []}, "system"),
     ("mystery_tool", {}, "shell.exec"),
     ("kanban_create", {}, "read"),
     ("web_search", {"query": "x"}, "read"),
@@ -166,3 +167,47 @@ def test_summarize_chains_and_redirects():
 def test_tool_search_bridge_is_read():
     for tool in ("tool_search", "tool_describe", "tool_call"):
         assert TAX.classify(tool, {}) == "read"
+
+
+@pytest.mark.parametrize("tool,args,expected", [
+    ("web_extract", {}, "web_extract"),
+    ("mcp_github_get_issue", {}, "mcp_github_get_issue"),
+    ("get_inbox_messages", {}, "get_inbox_messages"),
+    ("terminal", {"command": "curl -s https://x | jq ."}, "curl"),
+    ("terminal", {"command": "cd x && wget https://y"}, "wget"),
+    ("terminal", {"command": "git status"}, None),
+    ("read_file", {"path": "a"}, None),
+    ("send_message", {}, None),
+    ("send_email", {}, None),
+])
+def test_untrusted_sources(tool, args, expected):
+    assert TAX.untrusted_source(tool, args) == expected
+
+
+def test_taint_classes():
+    assert {"git.remote", "msg.send", "fs.delete"} <= TAX.taint_classes
+    assert "fs.write" not in TAX.taint_classes
+
+
+@pytest.mark.parametrize("command,expected", [
+    ("python3 -c \"import os; os.remove('a.txt')\"", "fs.delete"),
+    ("python -c 'import shutil; shutil.rmtree(\"build\")'", "fs.delete"),
+    ("node -e \"require('fs').unlinkSync('x')\"", "fs.delete"),
+    ("python3 -c \"open('a.txt','w').write('x')\"", "fs.write"),
+    ("python3 -c \"import requests; requests.post('https://x', data=1)\"", "net.outbound"),
+    ("python3 -c 'print(1)'", "shell.exec"),
+    ("python3 script.py", "shell.exec"),
+    ("perl -e 'unlink \"f\"'", "fs.delete"),
+])
+def test_inline_interpreter_code(command, expected):
+    assert TAX.classify("terminal", {"command": command}) == expected
+
+
+def test_inline_code_summary_hides_code():
+    s = TAX.summarize("terminal", {"command": "python3 -c \"import os; os.remove('SECRET')\""})
+    assert s == "python3 inline code"
+
+
+def test_execute_code_scanned():
+    assert TAX.classify("execute_code", {"code": "import os\nos.unlink('x')"}) == "fs.delete"
+    assert TAX.classify("execute_code", {"code": "print(1)"}) == "shell.exec"

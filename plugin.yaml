@@ -35,3 +35,4 @@ config_schema:
   handoff_max_chars: {type: int, default: 3000, label: "Handoff note size (chars)"}
   handoff_after_compaction: {type: bool, default: true, label: "Progress list after compaction"}
   retention_days: {type: int, default: 90, label: "Ledger retention (days)"}
+  taint_enabled: {type: bool, default: true, label: "Ask after outside content", description: "After a turn reads web pages, mail or other outside content, risky actions ask first for the rest of that turn, even when trusted"}

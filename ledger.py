@@ -91,6 +91,8 @@ _EXIT_CODE = re.compile(r"(?i)\bexit(?:ed)?[ _]?(?:with )?(?:code|status)\b[\"']
 
 def init(db: sqlite3.Connection) -> sqlite3.Connection:
     db.executescript(SCHEMA)
+    if "flags" not in {r[1] for r in db.execute("PRAGMA table_info(events)")}:
+        db.execute("ALTER TABLE events ADD COLUMN flags TEXT")
     db.commit()
     return db
 
@@ -142,13 +144,14 @@ def derive_ok(result) -> tuple[bool, str | None]:
 
 def insert_event(db, *, profile, tool, action_class, args, args_summary, ok, error=None,
                  conversation_id=None, session_id=None, cwd=None, duration_ms=None,
-                 gated=False, approval=None, ts=None) -> int:
+                 gated=False, approval=None, ts=None, flags=None) -> int:
     cur = db.execute(
         "INSERT INTO events (ts, profile, conversation_id, session_id, cwd, tool, action_class,"
-        " args_hash, args_summary, ok, error, duration_ms, gated, approval)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        " args_hash, args_summary, ok, error, duration_ms, gated, approval, flags)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (ts or time.time(), profile, conversation_id, session_id, cwd, tool, action_class,
-         args_hash(args), args_summary, int(bool(ok)), error, duration_ms, int(bool(gated)), approval),
+         args_hash(args), args_summary, int(bool(ok)), error, duration_ms, int(bool(gated)), approval,
+         flags),
     )
     db.commit()
     return cur.lastrowid
@@ -231,6 +234,7 @@ class PendingGate:
     ts: float
     call_id: str | None = None
     approval: str | None = None
+    note: str | None = None
 
 
 @dataclass
@@ -239,11 +243,12 @@ class GateTracker:
     _pending: list = field(default_factory=list)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def add(self, task_id, tool, args, action_class, now=None, call_id=None):
+    def add(self, task_id, tool, args, action_class, now=None, call_id=None, note=None):
         now = now or time.time()
         with self._lock:
             self._expire(now)
-            self._pending.append(PendingGate(task_id, tool, args_hash(args), action_class, now, call_id or None))
+            self._pending.append(PendingGate(task_id, tool, args_hash(args), action_class, now, call_id or None,
+                                             note=note))
 
     def match(self, task_id, tool, args, now=None, call_id=None) -> PendingGate | None:
         now = now or time.time()

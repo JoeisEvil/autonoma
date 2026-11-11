@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 PLUGIN = "autonoma"
 RULE_PREFIX = f"plugin_rule:{PLUGIN}:"
+TAINT_PREFIX = "taint:"
 APPROVAL_REASONS = {
     "once": "approved_once",
     "session": "approved_session",
@@ -37,6 +38,7 @@ CONFIG_KEYS = {
     "handoff_max_chars": 3000,
     "handoff_after_compaction": True,
     "retention_days": 90,
+    "taint_enabled": True,
 }
 
 
@@ -74,6 +76,7 @@ class Runtime:
         self.turns = {}
         self.parents = {}
         self.pending_progress = set()
+        self.tainted = {}
 
     # --- plumbing -----------------------------------------------------------------------------
 
@@ -226,12 +229,36 @@ class Runtime:
         cls = self.taxonomy.classify(tool_name, args)
         if cls == "read":
             return None
+        summary = self.taxonomy.summarize(tool_name, args)
         with self._lock:
-            decision = self.engine().decide(self.profile, cls, self.taxonomy.summarize(tool_name, args),
-                                            self.current_turn())
+            decision = self.engine().decide(self.profile, cls, summary, self.current_turn())
+        source = self._taint_source(kwargs.get("session_id") or task_id, cls)
+        note = None
+        if source and decision.action != "block":
+            decision = self._taint_decision(decision, cls, summary, source, kwargs.get("session_id") or task_id)
+            note = f"taint:{source}"
         if decision.action == "approve":
-            self.gates.add(task_id, tool_name, args, cls, call_id=tool_call_id)
+            self.gates.add(task_id, tool_name, args, cls, call_id=tool_call_id, note=note)
         return decision.directive()
+
+    def _taint_source(self, session_id, cls):
+        cfg = self.config()
+        if not (cfg["enabled"] and cfg.get("taint_enabled", True)) or cls not in self.taxonomy.taint_classes:
+            return None
+        return self.tainted.get(self.root_session(session_id))
+
+    def _taint_decision(self, decision, cls, summary, source, session_id):
+        note = f"This turn read outside content ({source}); check this is what you asked for."
+        if decision.action == "approve":
+            decision.message = f"{decision.message} {note}"
+            return decision
+        turn = (self.turns.get(self.root_session(session_id)) or (0,))[0]
+        what = f" — {summary}" if summary else ""
+        decision.action = "approve"
+        decision.message = (f"Autonoma · {cls} is trusted ({decision.score:.0f}/{decision.threshold:.0f}){what}. "
+                            f"{note}")
+        decision.rule_key = f"{PLUGIN}:{TAINT_PREFIX}{turn}:{cls}"
+        return decision
 
     @safe()
     def on_post_tool_call(self, tool_name="", args=None, result=None, task_id="", duration_ms=None,
@@ -252,6 +279,9 @@ class Runtime:
             ok, error = False, "blocked"
 
         sid = self.root_session(session_id or task_id)
+        source = None if blocked else self.taxonomy.untrusted_source(tool_name, args)
+        if source and sid:
+            self.tainted.setdefault(sid, source)
         with self._lock:
             session = self.ensure_session(sid, conversation_id=conversation_id or None)
             conv = conversation_id or (session or {}).get("conversation_id")
@@ -260,7 +290,8 @@ class Runtime:
                 cwd=(session or {}).get("cwd"), tool=tool_name, action_class=cls, args=args,
                 args_summary=self.taxonomy.summarize(tool_name, args), ok=ok, error=error,
                 duration_ms=duration_ms, gated=pending is not None,
-                approval=pending.approval if pending else None)
+                approval=pending.approval if pending else None,
+                flags=pending.note if pending else None)
             if cls != "read" and not blocked:
                 self.engine().apply(self.profile, cls, "clean_call" if ok else "tool_error", event_id)
         if cls != "read":
@@ -274,6 +305,9 @@ class Runtime:
         cls = pattern_key[len(RULE_PREFIX):]
         reason = APPROVAL_REASONS.get(choice)
         if reason is None:
+            return None
+        if cls.startswith(TAINT_PREFIX):
+            self.gates.set_approval(cls.rsplit(":", 1)[-1], f"taint:{choice}")
             return None
         self.gates.set_approval(cls, choice)
         with self._lock:
@@ -297,6 +331,7 @@ class Runtime:
             self.parents[session_id] = parent_session_id
             return None
         text = _text(user_message)
+        self.tainted.pop(session_id, None)
         parts = []
         with self._lock:
             session = self.ensure_session(session_id, platform=platform, model=model)

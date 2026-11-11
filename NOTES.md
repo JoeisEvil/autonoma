@@ -37,13 +37,28 @@ re-injection; subagent tool calls.
   freeze stops score changes only; the gate still enforces (matches §9 `/trust freeze`).
 - **Corrections**: `stop` counts only at the start of a message (so "add a stop button" is not a
   correction). Added `leading:` to `data/corrections.yaml`.
-- **Security scan**: the catalog scanner flags the bare words `sudo`, `printenv`, `mkfs`, `visudo`
-  even in classifier data. `sudo`/`printenv`/`mkfs` moved into a Python literal in `taxonomy.py`
-  (a documented inert shape; one `caution` remains on `mkfs`). `visudo` dropped; it falls back to
-  `shell.exec`, still gated.
+- **Security scan**: the catalog scanner flags bare privilege, env-dump and disk-format verb names
+  even in classifier data. Those three moved into a Python literal (`_BUILTIN_VERBS` in
+  `taxonomy.py`, a documented inert shape; one `caution` remains on the disk-format verb). The
+  sudoers editor was dropped; it falls back to `shell.exec`, still gated.
 - **Tool Search bridge**: `tool_search`/`tool_describe`/`tool_call` are `read`. `tool_call` is
   unwrapped by Hermes and the real tool fires its own `pre_tool_call`, so nothing is bypassed.
 - **Debug switch** (not in spec): if `<plugin-data>/autonoma/debug_kwargs` exists, each hook appends
   its kwarg names/types and id fields (no values) to `kwargs.log`. Needed for the Phase 0 capture.
 - **Crash detection** (not in spec): a session with no `on_session_end` after its last turn and
   ≥ 120 s idle is treated as unfinished, because `kill -9` fires no hook.
+- **Tainted turns** (not in spec): once a turn runs an untrusted source (`untrusted_sources` in
+  `data/taxonomy.yaml`: web/browser/search tools, `mcp_*`, mail/inbox readers, `curl`/`wget`), the
+  `taint_classes` (system, spend, fs.delete, git.remote, net.outbound, msg.send) ask for approval
+  for the rest of that turn even when trusted. Cleared on the next user message. The prompt's
+  rule key is per turn (`autonoma:taint:<turn>:<class>`) so "session"/"always" can't switch it off
+  for later turns. Answers to taint prompts don't move trust. Toggle: `taint_enabled`.
+- **`skill_manage` is `system`**: found live — the agent wrote a skill with wrong conclusions about
+  the plugin, covered by an fs.write "always" grant. Editing its own instructions now always asks.
+- **Dashboard tab** (`dashboard/`): `hermes dashboard`, pick the `autonomadev` profile, open **Autonoma**.
+  `plugin_api.py` loads the plugin's own modules by file path (no core imports beyond
+  `plugins.plugin_storage` and `hermes_cli.config.load_config`, both used in the dashboard docs) and
+  opens its own connection to the ledger. Incidents are derived in `insights.py` from the ledger:
+  a different action within 5 min after a block (workaround), the same action after a "deny" (retry),
+  taint-gated actions (`events.flags`, added by migration), `skill_manage` calls, corrections, and
+  threshold crossings. Polls every 2.5 s while the page is visible.
