@@ -198,6 +198,25 @@ they are trusted (`taint_enabled`); the dashboard tab adds local routes under
 handoff notes. Message bodies, file contents, command arguments beyond the first safe one, URL paths
 and query strings are never stored. Nothing leaves your machine.
 
+## Roadmap
+
+Tracked as [issues](https://github.com/JoeisEvil/autonoma/issues). Next up:
+
+**Security**
+- Treat writes to Hermes's own config as `system` ([#1](https://github.com/JoeisEvil/autonoma/issues/1)) and protect the ledger from the agent ([#2](https://github.com/JoeisEvil/autonoma/issues/2))
+- Less credit for rubber-stamp approvals ([#3](https://github.com/JoeisEvil/autonoma/issues/3)); escalate by blast radius ([#4](https://github.com/JoeisEvil/autonoma/issues/4))
+- Ask before sending anything after a secret was read ([#5](https://github.com/JoeisEvil/autonoma/issues/5))
+- Trust scoped by project, path and branch ([#6](https://github.com/JoeisEvil/autonoma/issues/6)); new models start lower ([#7](https://github.com/JoeisEvil/autonoma/issues/7)); subagents capped at their parent ([#8](https://github.com/JoeisEvil/autonoma/issues/8))
+- Classify MCP tools from their read-only/destructive annotations ([#9](https://github.com/JoeisEvil/autonoma/issues/9)); burst limits for trusted classes ([#10](https://github.com/JoeisEvil/autonoma/issues/10))
+- A team policy file with floors users can't lower ([#17](https://github.com/JoeisEvil/autonoma/issues/17))
+
+**Desktop and other surfaces**
+- A Hermes Desktop pane ([#11](https://github.com/JoeisEvil/autonoma/issues/11)), a status bar chip ([#12](https://github.com/JoeisEvil/autonoma/issues/12)) and toasts for incidents ([#13](https://github.com/JoeisEvil/autonoma/issues/13))
+- Approvals verified end to end over Telegram and Discord ([#14](https://github.com/JoeisEvil/autonoma/issues/14))
+
+**Usability**
+- `/autonoma why` to explain a prompt ([#15](https://github.com/JoeisEvil/autonoma/issues/15)), a weekly report ([#16](https://github.com/JoeisEvil/autonoma/issues/16)), and corrections linked to `/rollback` ([#18](https://github.com/JoeisEvil/autonoma/issues/18))
+
 ## Development
 
 ```bash
