@@ -254,7 +254,7 @@ def build_note(session, events, max_chars=3000, now=None, others=0, last_request
     if nd:
         tail.append(nd)
     if others:
-        tail.append(f"{others} other unfinished session{'s' if others != 1 else ''}; /handoff list")
+        tail.append(f"{others} other unfinished session{'s' if others != 1 else ''}; /autonoma handoff list")
     tail.append("If the user wants to continue, resume from here rather than redoing completed steps. "
                 "Otherwise ignore this note.")
 
