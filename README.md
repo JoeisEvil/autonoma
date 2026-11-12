@@ -171,7 +171,7 @@ settings in Hermes Desktop.
 | `handoff_after_compaction` | `true` | Progress list after `/compress` |
 | `retention_days` | `90` | Ledger retention |
 
-To change how tools and commands are classified, put a `taxonomy.yaml` in `<HERMES_HOME>/autonoma/`.
+To change how tools and commands are classified, put a `taxonomy.yaml` in `<HERMES_HOME>/plugin-data/autonoma/`.
 Your entries are merged over [the defaults](data/taxonomy.yaml):
 
 ```yaml

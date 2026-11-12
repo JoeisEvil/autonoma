@@ -7,6 +7,8 @@ homepage: https://github.com/JoeisEvil/autonoma
 manifest_version: 2
 api_version: 1
 requires_hermes: ">=0.23.0"
+python_dependencies:
+  - "PyYAML>=6,<7"
 tags: [trust, approvals, safety, autonomy, handoff, local-models]
 provides_tools:
   - autonoma_status

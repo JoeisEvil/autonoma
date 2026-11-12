@@ -126,8 +126,7 @@ class Runtime:
         if self._taxonomy is None:
             override = None
             try:
-                from hermes_constants import get_hermes_home
-                override = get_hermes_home() / PLUGIN / "taxonomy.yaml"
+                override = self.data_dir() / "taxonomy.yaml"
             except Exception:
                 pass
             self._taxonomy = taxonomy.Taxonomy.load(override)

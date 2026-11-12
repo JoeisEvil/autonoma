@@ -21,7 +21,7 @@ _INLINE_CODE = [
                              r"|fs\.(promises\.)?(rm|unlink)|FileUtils\.rm|File\.delete|\bunlink\b|\brm\s+-")),
     ("net.outbound", re.compile(r"requests\.(post|put|patch|delete)|smtplib|method\s*[:=]\s*['\"](POST|PUT|PATCH|DELETE)"
                                 r"|paramiko|ftplib|Net::HTTP::Post", re.I)),
-    ("fs.write", re.compile(r"open\([^)]*['\"][wax]b?\+?['\"]|write_text|write_bytes|writeFileSync|appendFileSync"
+    ("fs.write", re.compile(r"open\([^)]{0,256}['\"][wax]b?\+?['\"]|write_text|write_bytes|writeFileSync|appendFileSync"
                             r"|fs\.(promises\.)?(writeFile|appendFile)|shutil\.(copy|move)|os\.(rename|replace|mkdir|makedirs)"
                             r"|File\.write|IO\.write")),
 ]

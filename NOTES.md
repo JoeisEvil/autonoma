@@ -32,7 +32,7 @@ re-injection; subagent tool calls.
 
 - **Installed Hermes was v0.19.0** and had none of `plugin_storage`, `config_schema`,
   `post_compaction`, `plugins doctor/validate`. Updated to latest main before building.
-- **YAML**: core modules use PyYAML (`import yaml`, shipped by Hermes), not ruamel.
+- **YAML**: core modules use PyYAML (`import yaml`); Hermes core doesn't ship it, so it's declared in `pyproject.toml` and `plugin.yaml` (`python_dependencies`).
 - **Frozen**: spec §7 step 2 reads "class frozen and score ≥ threshold → None". Implemented as:
   freeze stops score changes only; the gate still enforces (matches §9 `/trust freeze`).
 - **Corrections**: `stop` counts only at the start of a message (so "add a stop button" is not a
